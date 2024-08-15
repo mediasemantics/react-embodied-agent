@@ -1,5 +1,8 @@
 {
-  "name": "react-embodied-agent",
+  "name": "@mediasemantics/react-embodied-agent",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/mediasemantics"
+  },
   "version": "1.0.0",
   "description": "Add an embodied agent to your React app! These realistic and cartoon characters can be controlled like a puppet to speak pre-authored and even dynamic messages, with actions, emotions, and lip-sync.",
   "main": "dist/react-embodied-agent.js",
