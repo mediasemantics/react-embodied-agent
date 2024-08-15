@@ -1,7 +1,7 @@
 # React Embodied Agent
 Add an embodied agent to your React app! These realistic and cartoon characters can speak pre-authored and/or dynamic messages, with recorded or Text-to-Speech (TTS) audio, actions, emotions, and lip-sync.
 
-![example](https://github.com/mediasemantics/react-embodied-agent/raw/master/docs/img/example.png)
+![example](https://github.com/mediasemantics/react-embodied-agent/raw/main/docs/img/example.png)
 
 ## Creating your module
 Head over to [https://mediasemantics.com](https://mediasemantics.com) and sign up for the People Builder service (free for a week, and as little as $10/month thereafter). Use the Modules tab, and use the **Add** button to create an Interactive Agent module. Configure your character's appearance, voice, background, and messages. Test it in the Preview tab. Return to the Modules tab, press the **Publish** button to publish your module, and then press **Get Embed Code**. You will see a React embed code similar to the following:
@@ -49,7 +49,7 @@ export default App;
 
 Use the `play()` method to trigger a message. Say you've used the People Builder's Messages tab to create a message named "Intro". 
 
-![message](https://github.com/mediasemantics/react-embodied-agent/raw/master/docs/img/message.png)
+![message](https://github.com/mediasemantics/react-embodied-agent/raw/main/docs/img/message.png)
 
 To play the "Intro" message, you use:
 
@@ -139,7 +139,7 @@ You can preload any message by using the `preloadPlay()` and `preloadDynamicPlay
 
 You can embed arbitrary commands in your message script that are surfaced as the `onScriptCommand` event in the `event.detail` field.
 
-![command](https://github.com/mediasemantics/react-embodied-agent/raw/master/docs/img/command.png)
+![command](https://github.com/mediasemantics/react-embodied-agent/raw/main/docs/img/command.png)
 
 ```javascript
 <ReactEmbodiedAgent ref={this.myAgentRef} style={{width:"250px", height:"200px"}} userid="12345678" moduleid="12345678" 
