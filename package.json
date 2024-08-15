@@ -1,0 +1,22 @@
+{
+  "name": "react-embodied-agent",
+  "version": "1.0.0",
+  "description": "Add an embodied agent to your React app! These realistic and cartoon characters can be controlled like a puppet to speak pre-authored and even dynamic messages, with actions, emotions, and lip-sync.",
+  "main": "dist/react-embodied-agent.js",
+  "scripts": {
+    "build": "webpack",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Media Semantics, Inc.",
+  "license": "ISC",
+  "devDependencies": {
+    "@babel/core": "^7.25.2",
+    "@babel/preset-env": "^7.25.3",
+    "@babel/preset-react": "^7.24.7",
+    "babel-loader": "^9.1.3",
+    "react": "^18.3.1",
+    "webpack": "^5.93.0",
+    "webpack-cli": "^5.1.4"
+  }
+}
