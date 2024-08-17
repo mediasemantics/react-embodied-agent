@@ -32,8 +32,8 @@ If you prefer the class syntax, you can use the equivalent class code:
 import React, { Component } from 'react';
 import ReactEmbodiedAgent from 'react-embodied-agent';
 class App extends Component {
-    constructor() {
-        super();
+    constructor(props) {
+        super(props);
         this.myAgentRef = React.createRef();
     }
     render() {

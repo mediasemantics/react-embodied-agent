@@ -1,16 +1,17 @@
 {
-  "name": "@mediasemantics/react-embodied-agent",
+  "name": "react-embodied-agent",
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com/mediasemantics"
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
-  "version": "1.0.0",
-  "description": "Add an embodied agent to your React app! These realistic and cartoon characters can be controlled like a puppet to speak pre-authored and even dynamic messages, with actions, emotions, and lip-sync.",
+  "version": "1.0.1",
+  "description": "Add an embodied agent to your React app.",
   "main": "dist/react-embodied-agent.js",
   "scripts": {
     "build": "webpack",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": ["agent", "character", "character animation", "TTS agent", "virtual people", "people builder"],
   "author": "Media Semantics, Inc.",
   "license": "ISC",
   "devDependencies": {
