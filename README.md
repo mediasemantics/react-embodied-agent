@@ -133,7 +133,7 @@ Breaking the paragaph down into sentences is necessary in order to lower the lat
 
 ## Preloading messages
 
-You can preload any message by using the `preloadPlay()` and `preloadDynamicPlay()` API. These work just like the regular `play()` and `dynamicPlay()` API, but simply ensure that any required resources are cached in the local browser cache.
+You can preload any message by using the `preloadPlay()` and `preloadDynamicPlay()` API. These work just like the regular `play()` and `dynamicPlay()` API, but simply ensures that any required resources are cached in the local browser cache.
 
 ## Timing UI changes with your message
 

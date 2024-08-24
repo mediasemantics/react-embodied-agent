@@ -2,12 +2,6 @@
 import React, { Component } from 'react';
 import MSAgentModule from './agent';
 
-/*
-function ReactEmbodiedAgent() {
-  return <div>This is a custom React component!</div>;
-}
-*/
-
 class ReactEmbodiedAgent extends Component {
     static nextId = 1;
 
@@ -60,12 +54,10 @@ class ReactEmbodiedAgent extends Component {
         }
         this.divRef.current.removeEventListener("moduleLoaded", this.onModuleLoadedFn);
         this.divRef.current.removeEventListener("closedCaption", this.onClosedCaptionFn);
-        this.divRef.current.addEventListener("embeddedCommand", this.onEmbeddedCommandFn);
-        this.divRef.current.addEventListener("scriptCommand", this.onScriptCommandFn);
-    }
-
-    moduleLoaded() {
-        if (this.props.onModuleLoaded) this.props.onModuleLoaded();
+        this.divRef.current.removeEventListener("embeddedCommand", this.onEmbeddedCommandFn);
+        this.divRef.current.removeEventListener("scriptCommand", this.onScriptCommandFn);
+        this.divRef.current.removeEventListener("preloadComplete", this.onPreloadCompleteFn);
+        this.divRef.current.removeEventListener("playComplete", this.onPlayCompleteFn);
     }
 
     volume() {
