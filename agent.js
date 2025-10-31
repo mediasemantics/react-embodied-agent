@@ -1,6 +1,7 @@
 export default MSAgentModule
 
 function MSAgentModule(divid, userid, moduleid, params) {
+    var CLIENT_VERSION = "1.1";
     var that = this;
     if (!params) params = {};
     var serverBase = params.standalone ? null : "https://api.mediasemantics.com/";
@@ -65,6 +66,7 @@ function MSAgentModule(divid, userid, moduleid, params) {
                         console.log("People Builder service error: " + o.message);
                         return;
                     }
+                    if (o.type != "agent" && o.type != "actor") return console.log("People Builder incorrect module");
                     data = o.data;
                     version = o.data.version;
                 }
@@ -373,6 +375,8 @@ function MSAgentModule(divid, userid, moduleid, params) {
         var autoplay = data.autoplay;
         if (data.scene.playShield && (data.scene.playShieldBehavior == "always" || (data.scene.playShieldBehavior||"needed") == "needed" && audioContext && audioContext.state == "suspended")) // unless there will be a playshield
             autoplay = false;
+        if (playQueue.length > 0) // Any plays queued up while loading
+            onPlayDone();
         if (autoplay && !scenePreviewMode && !messagePreviewMode && !eventPreviewMode) {
             playGreeting();
         }
@@ -509,14 +513,14 @@ function MSAgentModule(divid, userid, moduleid, params) {
             if (typeof o.say == "number") o.say = o.say.toString();
             else if (typeof o.say != "string") o.say = "";
             o.say = o.say.substr(0, 256);
-            if (!loading['only'] && !animating['only'] && !stopping['only']) {  // multiline messages get treated much like multiple back-to-back messages
+            if (loaded['only'] && !loading['only'] && !animating['only'] && !stopping['only']) {  // multiline messages get treated much like multiple back-to-back messages
                 playCur = [1, o];
                 execute('only', '&dynamic=true', o.do, o.say, o.audio, onPlayDone);
             }
             else {
                 playQueue.push([1, o]);
                 // All queued messages are preload candidates
-                preloadExecute('only', '&dynamic=true', o.do, o.say, o.audio);
+                if (loaded['only']) preloadExecute('only', '&dynamic=true', o.do, o.say, o.audio);
             }
         }
         else document.getElementById(divid).dispatchEvent(createEvent("playComplete")); // always get one of these, i.e. if you actively play a message which is not there it should act like a blank message
@@ -938,9 +942,10 @@ function MSAgentModule(divid, userid, moduleid, params) {
     var texture = {};                    // Latest loaded texture - we try to keep it down to eyes, mouth - the leftovers
     var animData = {};                   // animData to match texture.
     var secondaryTextures = {};          // a set of sets e.g. {only:{LookDownLeft:Texture}}
-    var loadPhase = {};                  // 0 = not loaded, 1 = audio/data/texture loaded, 2 = secondary textures loaded
+    var loadPhase = {};                  // 0 = not loaded, 1 = audio/data/texture loaded, 2 = secondary textures loaded, 3 = load error
     var defaultTexture = {};             // The initial texture, which needs to load quickly, contains 3 or more textures, so optimize for this.
     var lastExecute = {};                // The animation that we just played (and could play again without reloading)
+    var featureWarning;                  // Only warn once
 
     // Running
     var fpsInterval, now, then, elapsed; // used in animate
@@ -954,7 +959,6 @@ function MSAgentModule(divid, userid, moduleid, params) {
     var executeCallback = {};            // What to call on execute() return, i.e. when entire animation is complete
     var deferredExecute = {};            // Handle execute during idle - used in slideshow
     var rafid;                           // Defined only when at least one character is animating - otherwise we stop the RAF (game) loop
-    var atLeastOneLoadError;             // We use this to stop idle after first load error
     var replying = false;                // True between chat enter and reply received and dynamicPlay issued
     var inFade;                          // True if we are fading in or out char
 
@@ -1063,6 +1067,8 @@ function MSAgentModule(divid, userid, moduleid, params) {
 
         executeCallback[who] = callback;
 
+        if (audioSource[who]) audioSource[who].stop();
+        audioSource[who] = null;
         stopping[who] = false;
         loading[who] = true;
         idling[who] = (params.indexOf("&idle=") > -1);
@@ -1087,6 +1093,7 @@ function MSAgentModule(divid, userid, moduleid, params) {
         }
         else lastExecute[who] = executeRequest;
 
+        audioSource[who] = null;
         audioBuffer[who] = null;
         animData[who] = null;
         texture[who] = null;
@@ -1529,6 +1536,13 @@ function MSAgentModule(divid, userid, moduleid, params) {
     }
 
     function getItStarted(who, startAudio) {
+        // version check
+        if (animData[who].requireClient) {
+            var breaking = parseInt(animData[who].requireClient.split(".")[0]);
+            var feature = parseInt(animData[who].requireClient.split(".")[1]);
+            if (breaking > parseInt(CLIENT_VERSION.split(".")[0])) return console.error("character requires newer client");
+            else if (breaking == parseInt(CLIENT_VERSION.split(".")[0]) && feature > parseInt(CLIENT_VERSION.split(".")[1]) && !featureWarning) {console.warn("character requires newer client to be fully functional"); featureWarning = true;}
+        }
         // render the first frame and start animation loop
         loading[who] = false;
         showTranscript();
@@ -1617,6 +1631,9 @@ function MSAgentModule(divid, userid, moduleid, params) {
             rafid = requestAnimationFrame(animate);
             return;
         }
+
+        try {
+
         then = now - (elapsed % fpsInterval);
         var framesSkip = Math.max(1, Math.floor(elapsed / fpsInterval)) - 1;
         //if (framesSkip > 0) console.log("dropped "+framesSkip+" frame(s)");
@@ -1704,8 +1721,9 @@ function MSAgentModule(divid, userid, moduleid, params) {
                         var png = (data.scene[who + "BackgroundType"] == "transparent" || animData[who].layered || clientScale(who));
                                         
                         var process = recipe[i][7]||0;
+                        var toosmall = animData[who].swayProcess == 2 /*body*/ && animData[who].density == 1;
                         if (process >= 11 && process < 20) updateRandomWalk(who, process);
-                        if (process == 1 || process == 2) {
+                        if (process == 1 || process == 2 || (!toosmall && (process == 4 || process == 5))) {
                             var o = updateTransform(src, recipe, i, who);
                             ctx.drawImage(canvasTransformDst[who+process],
                                           0, 0,
@@ -1713,6 +1731,19 @@ function MSAgentModule(divid, userid, moduleid, params) {
                                           recipe[i][0] + o.x, recipe[i][1] + o.y,
                                           recipe[i][4], recipe[i][5]);                    
                         }
+                        else if (process == 5 && toosmall) {
+                            var o = updateTransform(src, recipe, i, who); // retain eyeball
+                        }
+                        else if (process == 4 && toosmall) {
+                            var o = updateTransform(src, recipe, i, who);
+                            var ctx2 = canvasTransformDst[who+5].getContext("2d");
+                            ctx2.drawImage(canvasTransformDst[who+4], 0, 0); // draw mask into eyeball
+                            ctx.drawImage(canvasTransformDst[who+5],
+                                0, 0,
+                                recipe[i][4], recipe[i][5],
+                                recipe[i][0] + o.x / 2, recipe[i][1] + o.y / 2,
+                                recipe[i][4] / 2, recipe[i][5] / 2);
+                        }                        
                         else if (png) {
                             // png characters replacement overlays with alpha need to first clear bits they replace e.g. hands up
                             if (!animData[who].layered && process != 3) {
@@ -1763,6 +1794,9 @@ function MSAgentModule(divid, userid, moduleid, params) {
             stopping[who] = false;
             frame[who] = undefined;
         }
+
+        } catch(e) {console.error(e);}
+
         for (var who in completed)
             animateComplete(who);
 
@@ -1780,23 +1814,27 @@ function MSAgentModule(divid, userid, moduleid, params) {
     }
 
     function controlRandomWalkSuppression(who, animData, frame) {
-        // Are layers with random process present in the next 6 frames? If so, suppressRandom = true, else false.
+        // Are hands controlled in the next 10 frames? If so, suppressRandom = true, else false.
         var present = true;
         try {
-            for (var d = 0; d < 6; d++) {
+            suppressRandom[who] = false;
+            for (var d = 0; d < 10; d++) {
                 var frameTest = frame + d;
-                if (animData.frames[frameTest][1] == -1 || stopping && animData.frames[frameTest][1]) break; // stop searching when we run out of frames
+                if (animData.frames[frameTest][1] == -1 || stopping[who] && animData.frames[frameTest][1]) break; // stop searching when we run out of frames
                 var framerec = animData.frames[frameTest];
                 var recipe = animData.recipes[framerec[0]];
-                var found = false;
+                var count = 0;
                 for (var i = 0; i < recipe.length; i++) {
                     var process = recipe[i][7]||0;
-                    if (process >= 11 && process < 20) {found = true; break;}
+                    if (process >= 11 && process < 20) count++;
                 }
-                if (!found) {present = false; break;}
+                if (count < 2) {
+                    suppressRandom[who] = true;
+                    //console.log("Hand controlled at " + frame + "+" + d);
+					break;
+				}            
             }
         } catch(e) {}
-        suppressRandom[who] = !present;
     }
 
     function updateRandomWalk(who, process) {
@@ -1804,7 +1842,8 @@ function MSAgentModule(divid, userid, moduleid, params) {
         var randomrec = random[who][n];
         // drive rapidly to frame 1
         if (suppressRandom[who]) {
-            if (randomrec.frame > 1) randomrec.frame = Math.round(randomrec.frame/2);
+            if (randomrec.frame > 1) randomrec.frame = Math.max(0, randomrec.frame - 2);
+            //console.log("Suppressing "+process+" "+randomrec.frame);
             randomrec.count = 0;
             randomrec.inc = 0;
             return;
@@ -1828,14 +1867,14 @@ function MSAgentModule(divid, userid, moduleid, params) {
         var xSrcImage = recipe[i][0];
         var ySrcImage = recipe[i][1];
         var process = recipe[i][7];
-        var rb = process == 1 ? animData[who].mouthBendRadius : (process == 2 || animData[who].jawBendRadius != undefined ? animData[who].jawBendRadius : 0);
-        var rt = process == 1 ? animData[who].mouthTwistRadius : (process == 2 || animData[who].jawTwistRadius != undefined ? animData[who].jawTwistRadius : 0);
+        var rb = (process == 4 || process == 5) ? animData[who].eyeBendRadius : animData[who].mouthBendRadius;
+        var rt = (process == 4 || process == 5) ? animData[who].eyeTwistRadius : animData[who].mouthTwistRadius;
         var bend = - recipe[i][8] / 180 * Math.PI;
         var twist = recipe[i][9] / 180 * Math.PI;
         var side = recipe[i][10] / 180 * Math.PI;
         side += twist * animData[who].twistToSide;
         bend += side * (animData[who].sideToBend||0);
-        var sideLength = animData[who].sideLength;
+        var sideLength = (process == 4 || process == 5) ? animData[who].sideLengthEye : animData[who].sideLength;
         var lowerJawDisplacement = animData[who].lowerJawDisplacement;
         var lowerJaw = recipe[i][8];
         var x = recipe[i][11];
@@ -1850,7 +1889,7 @@ function MSAgentModule(divid, userid, moduleid, params) {
             addXForm(1, 0, 0, 1, 0, sideLength, m);
         }
         if (x || y) {
-            addXForm(1, 0, 0, 1, x, y, m);
+            addXForm(1, 0, 0, 1, -x, -y, m);
         }
         // Extract the portion of the image we want to a new temp context and get its bits as the source
         if (!canvasTransformSrc[who+process]) {
@@ -1871,26 +1910,38 @@ function MSAgentModule(divid, userid, moduleid, params) {
         // Return the image displacement
         var deltax = 0;
         var deltay = 0;
-        if (process == 1 || animData[who].jawBendRadius != undefined) {
+        if (process == 1 || process == 4 || process == 5) {
             // Assume same size for destination image as for src, and compute where the origin will fall
-            var xDstImage = Math.floor(xSrcImage + rt * Math.sin(twist));
-            var yDstImage = Math.floor(ySrcImage - rb * Math.sin(bend));
+            var xDstImage = Math.round(xSrcImage + rt * Math.sin(twist));
+            var yDstImage = Math.round(ySrcImage - rb * Math.sin(bend));
             deltax = xDstImage - xSrcImage;
             deltay = yDstImage - ySrcImage;
-            // Setup feathering
+            deltax = Math.floor(deltax * 0.6); // a fudge factor to compensate for shift in mouth/eye within moving overlay
+            if (animData[who].swayProcess == 2 && animData[who].density == 1) {
+                deltax = Math.round(deltax / 2) * 2;
+                deltay = Math.round(deltay / 2) * 2;
+            }
+            // Setup feathering (mouth)
             var a = width / 2;
             var b = height / 2;
-            var fudge = Math.round(width/40) - 1;            
-            var xp = width - 5 - fudge; // 5 pixel feathering
-            var xpp = width - fudge; // but don't consider very edge pixels, at least in hi res
+            var feathering = animData[who].swayProcess == 2 ? 4 : ((animData[who].density||2)+1)*2;            
+            var xp = width - feathering;
+            var xpp = width;
             var vp = (xp-a)*(xp-a)/(a*a);
             var vpp = (xpp-a)*(xpp-a)/(a*a);
+            // Setup feathering (eyes)
+            var aeye = width/2 / 2;
+            var beye = height / 2;
+            var xpeye = width/2 - feathering;
+            var xppeye = width/2;
+            var vpeye = (xpeye-aeye)*(xpeye-aeye)/(aeye*aeye);
+            var vppeye = (xppeye-aeye)*(xppeye-aeye)/(aeye*aeye);
             // Main loop
             var xDstGlobal,yDstGlobal,xSrcGlobalZ,ySrcGlobalZ,xSrcGlobal,ySrcGlobal,xSrc,ySrc,x1Src,x2Src,y1Src,y2Src,offSrc1,offSrc2,offSrc3,offSrc4,rint,gint,bint,aint;
             var offDst = 0;
             for (var yDst = 0; yDst < height; yDst++) {
                 for (var xDst = 0; xDst < width; xDst++) {
-                    xDstGlobal = xDst + 0.001 - width/2 + deltax ;
+                    xDstGlobal = xDst + 0.001 - width/2 + deltax;
                     yDstGlobal = yDst + 0.001 - height/2 + deltay;
                     // z-rotate on an elliptic sphere with radius rb, rt
                     xSrcGlobalZ = rt * Math.sin(Math.asin(xDstGlobal/rt) - twist);
@@ -1918,24 +1969,31 @@ function MSAgentModule(divid, userid, moduleid, params) {
                     rint = Math.round((x2Src-xSrc)*(y2Src-ySrc) * source.data[offSrc1+0] + (xSrc-x1Src)*(y2Src-ySrc) * source.data[offSrc2+0] + (x2Src-xSrc)*(ySrc-y1Src) * source.data[offSrc3+0] + (xSrc-x1Src)*(ySrc-y1Src) * source.data[offSrc4+0]);
                     gint = Math.round((x2Src-xSrc)*(y2Src-ySrc) * source.data[offSrc1+1] + (xSrc-x1Src)*(y2Src-ySrc) * source.data[offSrc2+1] + (x2Src-xSrc)*(ySrc-y1Src) * source.data[offSrc3+1] + (xSrc-x1Src)*(ySrc-y1Src) * source.data[offSrc4+1]);
                     bint = Math.round((x2Src-xSrc)*(y2Src-ySrc) * source.data[offSrc1+2] + (xSrc-x1Src)*(y2Src-ySrc) * source.data[offSrc2+2] + (x2Src-xSrc)*(ySrc-y1Src) * source.data[offSrc3+2] + (xSrc-x1Src)*(ySrc-y1Src) * source.data[offSrc4+2]);
-                    var alpha;
-                    if (process == 1) {
-                        var v = (xDst-a)*(xDst-a)/(a*a) + (yDst-b)*(yDst-b)/(b*b);
+                    aint = Math.round((x2Src-xSrc)*(y2Src-ySrc) * source.data[offSrc1+3] + (xSrc-x1Src)*(y2Src-ySrc) * source.data[offSrc2+3] + (x2Src-xSrc)*(ySrc-y1Src) * source.data[offSrc3+3] + (xSrc-x1Src)*(ySrc-y1Src) * source.data[offSrc4+3]);
+                    var alpha, v;
+                    if (process == 1) { // mouth
+                        v = (xDst-a)*(xDst-a)/(a*a) + (yDst-b)*(yDst-b)/(b*b);
                         if (v > vpp) 
                             alpha = 0;
                         else if (v >= vp && v <= vpp) 
                             alpha = Math.round(255 * ((Math.sqrt(vpp) - Math.sqrt(v))/(Math.sqrt(vpp) - Math.sqrt(vp))));
                         else
-                            alpha = 255;
+                            alpha = aint;
                     }
-                    else if (process == 2) {
-                        alpha = Math.round((x2Src-xSrc)*(y2Src-ySrc) * source.data[offSrc1+3] + (xSrc-x1Src)*(y2Src-ySrc) * source.data[offSrc2+3] + (x2Src-xSrc)*(ySrc-y1Src) * source.data[offSrc3+3] + (xSrc-x1Src)*(ySrc-y1Src) * source.data[offSrc4+3]);
-                        if (alpha < 222) alpha = 0; else alpha = 255;
-                        if (yDst < height/10)
-                            alpha = Math.min(alpha, yDst /  (height/10) * 255);
+                    else if (process == 4) { //eyemask
+                        if (xDst <= width/2)
+                            v = (xDst-aeye)*(xDst-aeye)/(aeye*aeye) + (yDst-beye)*(yDst-beye)/(beye*beye);
+                        else 
+                            v = ((xDst-width/2)-aeye)*((xDst-width/2)-aeye)/(aeye*aeye) + (yDst-beye)*(yDst-beye)/(beye*beye);
+                        if (v > vppeye) 
+                            alpha = 0;
+                        else if (v >= vpeye && v <= vppeye) 
+                            alpha = Math.round(255 * ((Math.sqrt(vppeye) - Math.sqrt(v))/(Math.sqrt(vppeye) - Math.sqrt(vpeye))));
+                        else
+                            alpha = aint;
                     }
-                    else {
-                        alpha = 255;
+                    else if (process == 5) { // eyeball
+                        alpha = aint;
                     }
                     target.data[offDst] = rint; offDst++;
                     target.data[offDst] = gint; offDst++;
@@ -1943,8 +2001,40 @@ function MSAgentModule(divid, userid, moduleid, params) {
                     target.data[offDst] = alpha; offDst++;
                 }
             }
+            if (process == 4) { // eyemask - also convolve the alpha on the eye cutout for more natural shadow
+                var temp = new Uint8ClampedArray(target.data);
+                var conv = animData[who].density;
+                var offDst = 0;
+                for (var yDst = 0; yDst < height; yDst++) {
+					var s = "";
+                    for (var xDst = 0; xDst < width; xDst++) {
+                        if (xDst <= width/2)
+                            v = (xDst-aeye)*(xDst-aeye)/(aeye*aeye) + (yDst-beye)*(yDst-beye)/(beye*beye);
+                        else 
+                            v = ((xDst-width/2)-aeye)*((xDst-width/2)-aeye)/(aeye*aeye) + (yDst-beye)*(yDst-beye)/(beye*beye);
+                        if (v < vpeye) {
+                            aint = target.data[offDst+3];
+                            if (aint < 200) {
+                                var n = 0;
+                                var t = 0;
+                                for (var yRun = -conv; yRun < conv; yRun++) {
+                                    for (var xRun = -conv; xRun < conv; xRun++) {
+                                        var off = offDst + yRun*width*4 + xRun*4;
+                                        t += target.data[off + 3];
+                                        n++;
+                                    }
+                                }
+                                alpha = Math.max(aint, Math.round(Math.min(t/n, 200) * 0.75));
+                                temp[offDst+3] = alpha; 
+                            }
+                        }
+                        offDst += 4;
+                    }
+                }
+                target.data.set(temp);
+            }
         }
-        else if (process == 2) {
+        else if (process == 2) { // jaw
             var xSrc,ySrc,x1Src,x2Src,y1Src,y2Src,offSrc1,offSrc2,offSrc3,offSrc4,rint,gint,bint,aint;
             var offDst = 0;
             for (var yDst = 0; yDst < height; yDst++) {
@@ -2123,12 +2213,13 @@ function MSAgentModule(divid, userid, moduleid, params) {
                 animateComplete(who);
             }
         }
+        if (typeof cancelContinuation == "function") cancelContinuation();
     }
 
     function animateFailed(who) {
-        console.log("People Builder service error");
-        atLeastOneLoadError = true;
         loading[who] = false;
+        loadPhase[who] = 3;
+        lastExecute[who] = null; // in case api is repeated
         animateComplete(who);
     }
 
@@ -2148,7 +2239,7 @@ function MSAgentModule(divid, userid, moduleid, params) {
         }
         else {
             if (audioSource[who]) {
-                audioSource[who] = null;
+                // Audio can overhang animation in some cases
                 timeSinceLastAudioStopped = Date.now();
             }
             if (executeCallback[who]) {
@@ -2214,14 +2305,14 @@ function MSAgentModule(divid, userid, moduleid, params) {
         // Chat idle uses the same time, but is otherwise independent
         var found = false;
         for (who in roles) {
-            if (!scenePreviewMode && loaded[who] && (!loading[who]||idling[who]) && (!animating[who]||idling[who]) && !atLeastOneLoadError && !replying && isSolidVisible(who)) {
+            if (!scenePreviewMode && loaded[who] && (!loading[who]||idling[who]) && (!animating[who]||idling[who]) && loadPhase[who] != 3 && !replying && isSolidVisible(who)) {
                 found = true;
             }
         }
         if (found) onChatIdle();
         
         for (who in roles) {
-            if (!scenePreviewMode && loaded[who] && !loading[who] && !animating[who] && !atLeastOneLoadError && !replying) {
+            if (!scenePreviewMode && loaded[who] && !loading[who] && !animating[who] && loadPhase[who] != 3 && !replying) {
                 if (timeSinceLastAction[who] > 1500 + Math.random() * 3500) {  // no more than 5 seconds with no action whatsoever
                     timeSinceLastAction[who] = 0;
 					var idles = getIdles(who);

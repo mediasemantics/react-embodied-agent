@@ -16,7 +16,7 @@ You can use [Create React App](https://create-react-app.dev/) and the following 
 
 ```javascript
 import { useRef } from 'react';
-import ReactEmbodiedAgent from 'react-embodied-agent';
+import ReactEmbodiedAgent from '@mediasemantics/react-embodied-agent';
 function App() {
     const myAgentRef = useRef(null);
     return ( 
@@ -30,7 +30,7 @@ If you prefer the class syntax, you can use the equivalent class code:
 
 ```javascript
 import React, { Component } from 'react';
-import ReactEmbodiedAgent from 'react-embodied-agent';
+import ReactEmbodiedAgent from '@mediasemantics/react-embodied-agent';
 class App extends Component {
     constructor(props) {
         super(props);

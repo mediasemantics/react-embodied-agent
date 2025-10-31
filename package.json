@@ -4,7 +4,7 @@
     "registry": "https://registry.npmjs.org/",
     "access": "public"
   },
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Add an embodied agent to your React app.",
   "main": "dist/react-embodied-agent.js",
   "scripts": {
