@@ -4,7 +4,7 @@ Add an embodied agent to your React app! These realistic and cartoon characters 
 ![example](https://github.com/mediasemantics/react-embodied-agent/raw/main/docs/img/example.png)
 
 ## Creating your module
-Head over to [https://mediasemantics.com](https://mediasemantics.com) and sign up for the People Builder service (free for a week, and as little as $10/month thereafter). Use the Modules tab, and use the **Add** button to create an Interactive Agent module. Configure your character's appearance, voice, background, and messages. Test it in the Preview tab. Return to the Modules tab, press the **Publish** button to publish your module, and then press **Get Embed Code**. You will see a React embed code similar to the following:
+Head over to [https://mediasemantics.com](https://mediasemantics.com) and sign up for the People Builder service. Use the Modules tab, and use the **Add** button to create an Interactive Agent module. Configure your character's appearance, voice, background, and messages. Test it in the Preview tab. Return to the Modules tab, press the **Publish** button to publish your module, and then press **Get Embed Code**. You will see a React embed code similar to the following:
 
 ```javascript
 <ReactEmbodiedAgent ref={this.myAgentRef} style={{width:"250px", height:"200px"}} userid="12345678" moduleid="12345678" />

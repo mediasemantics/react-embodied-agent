@@ -11,14 +11,21 @@
     "build": "webpack",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["agent", "character", "character animation", "TTS agent", "virtual people", "people builder"],
+  "keywords": [
+    "agent",
+    "character",
+    "character animation",
+    "TTS agent",
+    "virtual people",
+    "people builder"
+  ],
   "author": "Media Semantics, Inc.",
   "license": "MIT",
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@babel/preset-env": "^7.25.3",
     "@babel/preset-react": "^7.24.7",
-    "babel-loader": "^9.1.3",
+    "babel-loader": "^10.1.1",
     "react": "^18.3.1",
     "webpack": "^5.93.0",
     "webpack-cli": "^5.1.4"
